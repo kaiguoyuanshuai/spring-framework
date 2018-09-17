@@ -43,6 +43,7 @@ import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.config.TypedStringValue;
 import org.springframework.beans.factory.xml.XmlBeanDefinitionReader;
 import org.springframework.beans.propertyeditors.CustomNumberEditor;
+import org.springframework.core.Ordered;
 import org.springframework.core.OverridingClassLoader;
 import org.springframework.core.ResolvableType;
 import org.springframework.core.io.ClassPathResource;
@@ -134,7 +135,7 @@ public class BeanFactoryGenericsTests {
 	}
 
 	@Test
-	public void testGenericListPropertyWithOptionalAutowiring() throws MalformedURLException {
+	public void testGenericListPropertyWithOptionalAutowiring() {
 		DefaultListableBeanFactory bf = new DefaultListableBeanFactory();
 
 		RootBeanDefinition rbd = new RootBeanDefinition(GenericBean.class);
@@ -892,38 +893,51 @@ public class BeanFactoryGenericsTests {
 		assertSame(bf.getBean("store2"), floatStoreProvider.getIfAvailable());
 		assertSame(bf.getBean("store2"), floatStoreProvider.getIfUnique());
 
-		Set<Object> resolved = new HashSet<>();
+		List<NumberStore<?>> resolved = new ArrayList<>();
 		for (NumberStore<?> instance : numberStoreProvider) {
 			resolved.add(instance);
 		}
 		assertEquals(2, resolved.size());
-		assertTrue(resolved.contains(bf.getBean("store1")));
-		assertTrue(resolved.contains(bf.getBean("store2")));
+		assertSame(bf.getBean("store1"), resolved.get(0));
+		assertSame(bf.getBean("store2"), resolved.get(1));
 
-		resolved = numberStoreProvider.stream().collect(Collectors.toSet());
+		resolved = numberStoreProvider.stream().collect(Collectors.toList());
 		assertEquals(2, resolved.size());
-		assertTrue(resolved.contains(bf.getBean("store1")));
-		assertTrue(resolved.contains(bf.getBean("store2")));
+		assertSame(bf.getBean("store1"), resolved.get(0));
+		assertSame(bf.getBean("store2"), resolved.get(1));
 
-		resolved = new HashSet<>();
+		resolved = numberStoreProvider.orderedStream().collect(Collectors.toList());
+		assertEquals(2, resolved.size());
+		assertSame(bf.getBean("store2"), resolved.get(0));
+		assertSame(bf.getBean("store1"), resolved.get(1));
+
+		resolved = new ArrayList<>();
 		for (NumberStore<Double> instance : doubleStoreProvider) {
 			resolved.add(instance);
 		}
 		assertEquals(1, resolved.size());
 		assertTrue(resolved.contains(bf.getBean("store1")));
 
-		resolved = doubleStoreProvider.stream().collect(Collectors.toSet());
+		resolved = doubleStoreProvider.stream().collect(Collectors.toList());
 		assertEquals(1, resolved.size());
 		assertTrue(resolved.contains(bf.getBean("store1")));
 
-		resolved = new HashSet<>();
+		resolved = (List) doubleStoreProvider.orderedStream().collect(Collectors.toList());
+		assertEquals(1, resolved.size());
+		assertTrue(resolved.contains(bf.getBean("store1")));
+
+		resolved = new ArrayList<>();
 		for (NumberStore<Float> instance : floatStoreProvider) {
 			resolved.add(instance);
 		}
 		assertEquals(1, resolved.size());
 		assertTrue(resolved.contains(bf.getBean("store2")));
 
-		resolved = floatStoreProvider.stream().collect(Collectors.toSet());
+		resolved = floatStoreProvider.stream().collect(Collectors.toList());
+		assertEquals(1, resolved.size());
+		assertTrue(resolved.contains(bf.getBean("store2")));
+
+		resolved = (List) floatStoreProvider.orderedStream().collect(Collectors.toList());
 		assertEquals(1, resolved.size());
 		assertTrue(resolved.contains(bf.getBean("store2")));
 	}
@@ -995,11 +1009,21 @@ public class BeanFactoryGenericsTests {
 	}
 
 
-	public static class DoubleStore extends NumberStore<Double> {
+	public static class DoubleStore extends NumberStore<Double> implements Ordered {
+
+		@Override
+		public int getOrder() {
+			return 1;
+		}
 	}
 
 
-	public static class FloatStore extends NumberStore<Float> {
+	public static class FloatStore extends NumberStore<Float> implements Ordered {
+
+		@Override
+		public int getOrder() {
+			return 0;
+		}
 	}
 
 
