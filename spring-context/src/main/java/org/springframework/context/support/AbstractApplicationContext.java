@@ -545,6 +545,7 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
 				registerListeners();
 
 				// Instantiate all remaining (non-lazy-init) singletons.
+				//这里是对非lazy-init（非延迟加载）的处理
 				finishBeanFactoryInitialization(beanFactory);
 
 				// Last step: publish corresponding event.
@@ -834,6 +835,11 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
 	 * Finish the initialization of this context's bean factory,
 	 * initializing all remaining singleton beans.
 	 */
+
+	/**
+	 * 在 refresh 中使用 主要步骤是为了 初始化 非懒加载-单例 bean 对象的初始化过程
+	 * @param beanFactory
+	 */
 	protected void finishBeanFactoryInitialization(ConfigurableListableBeanFactory beanFactory) {
 		// Initialize conversion service for this context.
 		if (beanFactory.containsBean(CONVERSION_SERVICE_BEAN_NAME) &&
@@ -862,6 +868,8 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
 		beanFactory.freezeConfiguration();
 
 		// Instantiate all remaining (non-lazy-init) singletons.
+		//这里初始化 由 org.springframework.beans.factory.support.DefaultListableBeanFactory.preInstantiateSingletons() 实现
+		//真正调用 getBean 初始化的方法
 		beanFactory.preInstantiateSingletons();
 	}
 
@@ -1076,7 +1084,7 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
 
 
 	//---------------------------------------------------------------------
-	// Implementation of BeanFactory interface
+	// Implementation of BeanFactory interface 【实现BeanFactory的接口方法】
 	//---------------------------------------------------------------------
 
 	@Override
