@@ -63,6 +63,8 @@ public class SimpleInstantiationStrategy implements InstantiationStrategy {
 
 		//判断是否有overried 如果没有则使用 BeanUtils 进行实例化
 		if (!bd.hasMethodOverrides()) {
+
+			//获取到 constructorToUse 构造函数
 			Constructor<?> constructorToUse;
 			synchronized (bd.constructorArgumentLock) {
 				constructorToUse = (Constructor<?>) bd.resolvedConstructorOrFactoryMethod;
@@ -86,7 +88,7 @@ public class SimpleInstantiationStrategy implements InstantiationStrategy {
 					}
 				}
 			}
-			//
+			//通过 newInstance()方法构造对象
 			return BeanUtils.instantiateClass(constructorToUse);
 		}
 		else {

@@ -206,13 +206,30 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 	protected <T> T doGetBean(final String name, @Nullable final Class<T> requiredType,
 			@Nullable final Object[] args, boolean typeCheckOnly) throws BeansException {
 
+
+		/**
+		 * 获取到真实的bean名称
+		 * 两种情况：
+		 * 1、&XXX 会去掉&
+		 * 2、alisa 别名的时候会取到真实的 beanName
+		 *
+		 */
 		final String beanName = transformedBeanName(name);
 		Object bean;
 
-
 		// Eagerly check singleton cache for manually registered singletons.
 		//尝试获取单例模式对象(从缓存中获取) ，非延迟加载的单例模式，会在初始化IOC容器的时候 就已经实例化完成了
+
+		/**
+		 * 从 singletonObjects 缓存中获取单例对象
+		 * 两种情况 ：
+		 * 		1、非延迟加载的bean会在 注册IOC容器的时候就已经加载好了 具体可以查看 ：
+		 * 		2、对于单例的 bean 已经getBean过了一次，再次获取的时候会从singletonObjects缓存中获取到bean
+		 */
+
 		Object sharedInstance = getSingleton(beanName);
+
+		//从已经获取到的 单例对象进行执行
 		if (sharedInstance != null && args == null) {
 			if (logger.isTraceEnabled()) {
 				if (isSingletonCurrentlyInCreation(beanName)) {
@@ -228,8 +245,6 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 
 		else {
 			//这里对IOC容器里面的BeanDefinition是否存在进行检查
-
-
 			// Fail if we're already creating this bean instance:
 			// We're assumably within a circular reference.
 			if (isPrototypeCurrentlyInCreation(beanName)) {
@@ -259,6 +274,7 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 			}
 
 			if (!typeCheckOnly) {
+				//标记 当前的bean在创建中  alreadyCreated
 				markBeanAsCreated(beanName);
 			}
 
@@ -266,11 +282,13 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 
 				//根据 beanName 获取 BeanDefinition
 				final RootBeanDefinition mbd = getMergedLocalBeanDefinition(beanName);
+
+				//检查是否为抽象类
 				checkMergedBeanDefinition(mbd, beanName, args);
 
 				// Guarantee initialization of beans that the current bean depends on.
 
-				//取出当前bean的所有依赖，然后出发所有依赖中的getBean的递归调用，直至渠道一个没有任何依赖的 bean 为止
+				//取出所有 定义了 depend-on的bean 有限加载 depend-on的bean
 				String[] dependsOn = mbd.getDependsOn();
 				if (dependsOn != null) {
 					for (String dep : dependsOn) {
@@ -280,6 +298,7 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 						}
 						registerDependentBean(dep, beanName);
 						try {
+							//加载 depend-on
 							getBean(dep);
 						}
 						catch (NoSuchBeanDefinitionException ex) {
@@ -296,6 +315,8 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 				if (mbd.isSingleton()) {
 					//getSingleton(beanName, new ObjectFactory<Object>() {
 					// } ) ;
+
+					//去真实的获取 单例下的bean
 							sharedInstance = getSingleton(beanName, () -> {
 								try {
 									//这里是 ObjectFactory 的 createBean 回调

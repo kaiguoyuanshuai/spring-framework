@@ -551,13 +551,15 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 			instanceWrapper = this.factoryBeanInstanceCache.remove(beanName);
 		}
 
-
+		//
 		if (instanceWrapper == null) {
-			//创建bean 实例
+			//创建bean 实例 ,通过 cglib或者构造函数的newInstance方法构造
 			instanceWrapper = createBeanInstance(beanName, mbd, args);
 		}
+		//这里是 createBeanInstance设置进去的 实例对象
 		final Object bean = instanceWrapper.getWrappedInstance();
 		Class<?> beanType = instanceWrapper.getWrappedClass();
+
 		if (beanType != NullBean.class) {
 			mbd.resolvedTargetType = beanType;
 		}
@@ -566,6 +568,7 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 		synchronized (mbd.postProcessingLock) {
 			if (!mbd.postProcessed) {
 				try {
+					//这里做什么先不管 //TODO 猜测 PostProcessors是创建完实例之后需要做的事情
 					applyMergedBeanDefinitionPostProcessors(mbd, beanType, beanName);
 				}
 				catch (Throwable ex) {
@@ -578,6 +581,8 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 
 		// Eagerly cache singletons to be able to resolve circular references
 		// even when triggered by lifecycle interfaces like BeanFactoryAware.
+
+		//这里先去判断是否可以被循环依赖
 		boolean earlySingletonExposure = (mbd.isSingleton() && this.allowCircularReferences &&
 				isSingletonCurrentlyInCreation(beanName));
 		if (earlySingletonExposure) {
@@ -585,6 +590,13 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 				logger.trace("Eagerly caching bean '" + beanName +
 						"' to allow for resolving potential circular references");
 			}
+			//为循环依赖做准备
+
+			//执行到这里表示当前的实例其实已经创建好了，只不过还没有进行DI （依赖注入）
+			//从 earlySingletonObjects 中移除
+			//添加到 singletonFactories 中
+
+			//TODO 这里猜测 注入的时候如果是引用注入，判断顺序应该 先检查   singletonFactories  再去检查 earlySingletonObjects
 			addSingletonFactory(beanName, () -> getEarlyBeanReference(beanName, mbd, bean));
 		}
 
@@ -593,9 +605,10 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 		//对bean 的初始化 ，依赖注入往往在这里发生
 		Object exposedObject = bean;
 		try {
-			//构建bean对象
+			// populateBean 对Bean的属性进行注入
 			populateBean(beanName, mbd, instanceWrapper);
 
+			//对创建好的 bean 进行初始化操作
 			exposedObject = initializeBean(beanName, exposedObject, mbd);
 		}
 		catch (Throwable ex) {
@@ -1286,7 +1299,13 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 				//选择实例化策略，进行实例化
 				beanInstance = getInstantiationStrategy().instantiate(mbd, beanName, parent);
 			}
+
+			//转化实例对象为 BeanWrapper接口
+			//TODO 需要研究一下这里的作用
+
 			BeanWrapper bw = new BeanWrapperImpl(beanInstance);
+
+			//然后初始化一下 BeanWrapper
 			initBeanWrapper(bw);
 			return bw;
 		}
@@ -1374,8 +1393,9 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 			return;
 		}
 
-		PropertyValues pvs = (mbd.hasPropertyValues() ? mbd.getPropertyValues() : null);
 		//获取 BeanDefinition中设置的property的值
+		PropertyValues pvs = (mbd.hasPropertyValues() ? mbd.getPropertyValues() : null);
+
 
 
 		// 开始处理依赖注入的过程  autowire
